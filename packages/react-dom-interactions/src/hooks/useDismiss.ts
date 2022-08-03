@@ -1,11 +1,10 @@
 import {getOverflowAncestors} from '@floating-ui/react-dom';
 import * as React from 'react';
-import {useFloatingTree} from '../FloatingTree';
+import {useFloatingParentNodeId, useFloatingTree} from '../FloatingTree';
 import type {ElementProps, FloatingContext, ReferenceType} from '../types';
-import {activeElement} from '../utils/activeElement';
 import {getChildren} from '../utils/getChildren';
 import {getDocument} from '../utils/getDocument';
-import {isElement, isHTMLElement} from '../utils/is';
+import {isElement} from '../utils/is';
 import {isEventTargetWithin} from '../utils/isEventTargetWithin';
 import {useLatestRef} from '../utils/useLatestRef';
 
@@ -35,18 +34,7 @@ export const useDismiss = <RT extends ReferenceType = ReferenceType>(
 ): ElementProps => {
   const tree = useFloatingTree();
   const onOpenChangeRef = useLatestRef(onOpenChange);
-
-  const isFocusInsideFloating = React.useCallback(() => {
-    return refs.floating.current?.contains(
-      activeElement(getDocument(refs.floating.current))
-    );
-  }, [refs.floating]);
-
-  const focusReference = React.useCallback(() => {
-    if (isHTMLElement(refs.reference.current)) {
-      refs.reference.current.focus();
-    }
-  }, [refs.reference]);
+  const nested = useFloatingParentNodeId() != null;
 
   React.useEffect(() => {
     if (!open || !enabled) {
@@ -55,39 +43,75 @@ export const useDismiss = <RT extends ReferenceType = ReferenceType>(
 
     function onKeyDown(event: KeyboardEvent) {
       if (event.key === 'Escape') {
-        if (!bubbles && !isFocusInsideFloating()) {
+        if (
+          !bubbles &&
+          tree &&
+          getChildren(tree.nodesRef.current, nodeId).length > 0
+        ) {
           return;
         }
 
-        events.emit('dismiss');
+        events.emit('dismiss', {preventScroll: false});
         onOpenChangeRef.current(false);
-        focusReference();
       }
     }
 
     function onPointerDown(event: MouseEvent) {
+      // Check if the click occurred on the scrollbar
+      if (isElement(event.target) && refs.floating.current) {
+        const win = refs.floating.current.ownerDocument.defaultView ?? window;
+        const canScrollX = event.target.scrollWidth > event.target.clientWidth;
+        const canScrollY =
+          event.target.scrollHeight > event.target.clientHeight;
+
+        let xCond = canScrollY && event.offsetX > event.target.clientWidth;
+
+        // In some browsers it is possible to change the <body> (or window)
+        // scrollbar to the left side, but is very rare and is difficult to
+        // check for. Plus, for modal dialogs with backdrops, it is more
+        // important that the backdrop is checked but not so much the window.
+        if (canScrollY) {
+          const isRTL = win.getComputedStyle(event.target).direction === 'rtl';
+
+          if (isRTL) {
+            xCond =
+              event.offsetX <=
+              event.target.offsetWidth - event.target.clientWidth;
+          }
+        }
+
+        if (
+          xCond ||
+          (canScrollX && event.offsetY > event.target.clientHeight)
+        ) {
+          return;
+        }
+      }
+
       const targetIsInsideChildren =
         tree &&
-        getChildren(tree, nodeId).some((node) =>
+        getChildren(tree.nodesRef.current, nodeId).some((node) =>
           isEventTargetWithin(event, node.context?.refs.floating.current)
         );
 
       if (
         isEventTargetWithin(event, refs.floating.current) ||
-        (isElement(refs.reference.current) &&
-          isEventTargetWithin(event, refs.reference.current)) ||
+        isEventTargetWithin(event, refs.domReference.current) ||
         targetIsInsideChildren
       ) {
         return;
       }
 
-      if (!bubbles && !isFocusInsideFloating()) {
+      if (
+        !bubbles &&
+        tree &&
+        getChildren(tree.nodesRef.current, nodeId).length > 0
+      ) {
         return;
       }
 
-      events.emit('dismiss');
+      events.emit('dismiss', nested ? {preventScroll: true} : false);
       onOpenChangeRef.current(false);
-      focusReference();
     }
 
     function onScroll() {
@@ -96,10 +120,7 @@ export const useDismiss = <RT extends ReferenceType = ReferenceType>(
 
     const doc = getDocument(refs.floating.current);
     escapeKey && doc.addEventListener('keydown', onKeyDown);
-    // Use `mousedown` instead of `pointerdown` as it acts more like a click
-    // on touch devices than a `touchstart` (which can result in accidental
-    // dismissals too easily.)
-    outsidePointerDown && doc.addEventListener('mousedown', onPointerDown);
+    outsidePointerDown && doc.addEventListener('pointerdown', onPointerDown);
 
     const ancestors = (
       ancestorScroll
@@ -123,7 +144,8 @@ export const useDismiss = <RT extends ReferenceType = ReferenceType>(
 
     return () => {
       escapeKey && doc.removeEventListener('keydown', onKeyDown);
-      outsidePointerDown && doc.removeEventListener('mousedown', onPointerDown);
+      outsidePointerDown &&
+        doc.removeEventListener('pointerdown', onPointerDown);
       ancestors.forEach((ancestor) =>
         ancestor.removeEventListener('scroll', onScroll)
       );
@@ -136,13 +158,11 @@ export const useDismiss = <RT extends ReferenceType = ReferenceType>(
     nodeId,
     open,
     onOpenChangeRef,
-    focusReference,
     ancestorScroll,
     enabled,
     bubbles,
-    isFocusInsideFloating,
-    refs.floating,
-    refs.reference,
+    refs,
+    nested,
   ]);
 
   if (!enabled) {

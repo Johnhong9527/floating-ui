@@ -1,10 +1,23 @@
 import * as React from 'react';
-import type {UseFloatingReturn, ReferenceType} from './';
+import type {
+  ComputePositionReturn,
+  VirtualElement,
+  Placement,
+  Middleware,
+  Strategy,
+} from '@floating-ui/dom';
+import type {UseFloatingReturn as UsePositionFloatingReturn} from '@floating-ui/react-dom';
 
-export * from './';
 export * from '@floating-ui/dom';
+export * from './';
 
 export {arrow} from '@floating-ui/react-dom';
+
+interface ExtendedRefs<RT extends ReferenceType = ReferenceType> {
+  reference: React.MutableRefObject<RT | null>;
+  floating: React.MutableRefObject<HTMLElement | null>;
+  domReference: React.MutableRefObject<Element | null>;
+}
 
 export interface FloatingEvents {
   emit(event: string, data?: any): void;
@@ -19,12 +32,13 @@ export interface ContextData {
 }
 
 export interface FloatingContext<RT extends ReferenceType = ReferenceType>
-  extends UseFloatingReturn<RT> {
+  extends UsePositionFloatingReturn<RT> {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   events: FloatingEvents;
   dataRef: React.MutableRefObject<ContextData>;
   nodeId: string | undefined;
+  refs: ExtendedRefs<RT>;
 }
 
 export interface FloatingNodeType<RT extends ReferenceType = ReferenceType> {
@@ -44,4 +58,34 @@ export interface ElementProps {
   reference?: React.HTMLProps<Element>;
   floating?: React.HTMLProps<HTMLElement>;
   item?: React.HTMLProps<HTMLElement>;
+}
+
+export type ReferenceType = Element | VirtualElement;
+
+export type UseFloatingData = Omit<ComputePositionReturn, 'x' | 'y'> & {
+  x: number | null;
+  y: number | null;
+};
+
+export type UseFloatingReturn<RT extends ReferenceType = ReferenceType> =
+  UseFloatingData & {
+    update: () => void;
+    reference: (node: RT | null) => void;
+    floating: (node: HTMLElement | null) => void;
+    context: FloatingContext<RT>;
+    refs: ExtendedRefs<RT>;
+  };
+
+export interface UseFloatingProps<RT extends ReferenceType = ReferenceType> {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  placement: Placement;
+  middleware: Array<Middleware>;
+  strategy: Strategy;
+  nodeId: string;
+  whileElementsMounted?: (
+    reference: RT,
+    floating: HTMLElement,
+    update: () => void
+  ) => void | (() => void);
 }

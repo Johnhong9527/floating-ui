@@ -32,7 +32,10 @@ const bundles = [
     input,
     output: {
       name: 'FloatingUIReactDOM',
-      file: path.join(__dirname, 'dist/floating-ui.react-dom-interactions.js'),
+      file: path.join(
+        __dirname,
+        'dist/floating-ui.react-dom-interactions.umd.js'
+      ),
       format: 'umd',
       globals: {
         react: 'React',
@@ -50,7 +53,7 @@ const bundles = [
       name: 'FloatingUIReactDOM',
       file: path.join(
         __dirname,
-        'dist/floating-ui.react-dom-interactions.min.js'
+        'dist/floating-ui.react-dom-interactions.umd.min.js'
       ),
       format: 'umd',
       globals: {
@@ -72,7 +75,7 @@ const bundles = [
   },
 ];
 
-const buildExport = bundles.map(({input, output}) => ({
+export default bundles.map(({input, output}) => ({
   input,
   output,
   external: [
@@ -99,26 +102,3 @@ const buildExport = bundles.map(({input, output}) => ({
     output.file.includes('.min.') && terser(),
   ],
 }));
-
-const devExport = {
-  input: path.join(__dirname, 'src/index.ts'),
-  output: {
-    file: path.join(__dirname, `test/visual/dist/index.mjs`),
-    format: 'esm',
-  },
-  plugins: [
-    commonjs(),
-    nodeResolve({extensions: ['.ts']}),
-    babel({
-      babelHelpers: 'bundled',
-      extensions: ['.ts'],
-      plugins: ['annotate-pure-calls'],
-    }),
-    replace({
-      __DEV__: 'true',
-      preventAssignment: true,
-    }),
-  ],
-};
-
-export default process.env.NODE_ENV === 'build' ? buildExport : devExport;

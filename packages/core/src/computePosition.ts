@@ -56,22 +56,9 @@ export const computePosition: ComputePosition = async (
   let {x, y} = computeCoordsFromPlacement(rects, placement, rtl);
   let statefulPlacement = placement;
   let middlewareData: MiddlewareData = {};
+  let resetCount = 0;
 
-  let _debug_loop_count_ = 0;
   for (let i = 0; i < middleware.length; i++) {
-    if (__DEV__) {
-      _debug_loop_count_++;
-      if (_debug_loop_count_ > 100) {
-        throw new Error(
-          [
-            'Floating UI: The middleware lifecycle appears to be',
-            'running in an infinite loop. This is usually caused by a `reset`',
-            'continually being returned without a break condition.',
-          ].join(' ')
-        );
-      }
-    }
-
     const {name, fn} = middleware[i];
 
     const {
@@ -102,7 +89,21 @@ export const computePosition: ComputePosition = async (
       },
     };
 
-    if (reset) {
+    if (__DEV__) {
+      if (resetCount > 50) {
+        console.warn(
+          [
+            'Floating UI: The middleware lifecycle appears to be running in an',
+            'infinite loop. This is usually caused by a `reset` continually',
+            'being returned without a break condition.',
+          ].join(' ')
+        );
+      }
+    }
+
+    if (reset && resetCount <= 50) {
+      resetCount++;
+
       if (typeof reset === 'object') {
         if (reset.placement) {
           statefulPlacement = reset.placement;

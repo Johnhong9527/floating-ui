@@ -1,6 +1,6 @@
 import type {ElementProps, FloatingContext, ReferenceType} from '../types';
 import * as React from 'react';
-import {isHTMLElement} from '../utils/is';
+import {isTypeableElement} from '../utils/isTypeableElement';
 
 export interface Props {
   enabled?: boolean;
@@ -10,7 +10,7 @@ export interface Props {
 }
 
 /**
- * Adds click event listeners that change the open state (toggle behavior).
+ * Adds click event listeners that change the open state.
  * @see https://floating-ui.com/docs/useClick
  */
 export const useClick = <RT extends ReferenceType = ReferenceType>(
@@ -25,10 +25,11 @@ export const useClick = <RT extends ReferenceType = ReferenceType>(
   const pointerTypeRef = React.useRef<'mouse' | 'pen' | 'touch'>();
 
   function isButton() {
-    return (
-      isHTMLElement(refs.reference.current) &&
-      refs.reference.current.tagName === 'BUTTON'
-    );
+    return refs.domReference.current?.tagName === 'BUTTON';
+  }
+
+  function isSpaceIgnored() {
+    return isTypeableElement(refs.domReference.current);
   }
 
   if (!enabled) {
@@ -39,6 +40,13 @@ export const useClick = <RT extends ReferenceType = ReferenceType>(
     reference: {
       onPointerDown(event) {
         pointerTypeRef.current = event.pointerType;
+      },
+      onMouseDown(event) {
+        // Ignore all buttons except for the "main" button.
+        // https://developer.mozilla.org/en-US/docs/Web/API/MouseEvent/button
+        if (event.button !== 0) {
+          return;
+        }
 
         if (pointerTypeRef.current === 'mouse' && ignoreMouse) {
           return;
@@ -49,7 +57,12 @@ export const useClick = <RT extends ReferenceType = ReferenceType>(
         }
 
         if (open) {
-          if (toggle && dataRef.current.openEvent?.type === 'pointerdown') {
+          if (
+            toggle &&
+            (dataRef.current.openEvent
+              ? dataRef.current.openEvent.type === 'mousedown'
+              : true)
+          ) {
             onOpenChange(false);
           }
         } else {
@@ -69,7 +82,12 @@ export const useClick = <RT extends ReferenceType = ReferenceType>(
         }
 
         if (open) {
-          if (toggle && dataRef.current.openEvent?.type === 'click') {
+          if (
+            toggle &&
+            (dataRef.current.openEvent
+              ? dataRef.current.openEvent.type === 'click'
+              : true)
+          ) {
             onOpenChange(false);
           }
         } else {
@@ -79,11 +97,13 @@ export const useClick = <RT extends ReferenceType = ReferenceType>(
         dataRef.current.openEvent = event.nativeEvent;
       },
       onKeyDown(event) {
+        pointerTypeRef.current = undefined;
+
         if (isButton()) {
           return;
         }
 
-        if (event.key === ' ') {
+        if (event.key === ' ' && !isSpaceIgnored()) {
           // Prvent scrolling
           event.preventDefault();
         }
@@ -99,7 +119,7 @@ export const useClick = <RT extends ReferenceType = ReferenceType>(
         }
       },
       onKeyUp(event) {
-        if (isButton()) {
+        if (isButton() || isSpaceIgnored()) {
           return;
         }
 

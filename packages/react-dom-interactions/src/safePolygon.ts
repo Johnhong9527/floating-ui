@@ -1,6 +1,5 @@
 import type {Side} from '@floating-ui/core';
 import type {FloatingContext, FloatingTreeType, ReferenceType} from './types';
-import {isElement} from './utils/is';
 import {getChildren} from './utils/getChildren';
 
 type Point = [number, number];
@@ -24,7 +23,7 @@ function isPointInPolygon(point: Point, polygon: Polygon) {
 
 export function safePolygon<RT extends ReferenceType = ReferenceType>({
   restMs = 0,
-  buffer = 0,
+  buffer = 0.5,
   debug = null,
 }: Partial<{
   restMs: number;
@@ -32,9 +31,7 @@ export function safePolygon<RT extends ReferenceType = ReferenceType>({
   debug: null | ((points?: string | null) => void);
 }> = {}) {
   let timeoutId: NodeJS.Timeout;
-  let initialized = false;
   let polygonIsDestroyed = false;
-  let timeoutPending = false;
 
   return ({
     x,
@@ -44,25 +41,14 @@ export function safePolygon<RT extends ReferenceType = ReferenceType>({
     onClose,
     nodeId,
     tree,
+    leave = false,
   }: FloatingContext<RT> & {
     onClose: () => void;
     tree?: FloatingTreeType<RT> | null;
+    leave?: boolean;
   }) => {
     return function onPointerMove(event: PointerEvent) {
       clearTimeout(timeoutId);
-
-      if (!initialized) {
-        // Block the first events to ensure the cursor has moved into the
-        // polygon, allowing leeway in rounding errors between the cursor point
-        // and the polygon.
-        if (!timeoutPending) {
-          timeoutPending = true;
-          setTimeout(() => {
-            initialized = true;
-          }, 1000 / 60);
-        }
-        return;
-      }
 
       function close() {
         clearTimeout(timeoutId);
@@ -84,8 +70,7 @@ export function safePolygon<RT extends ReferenceType = ReferenceType>({
       // is no need to run the logic.
       if (
         event.type === 'pointermove' &&
-        isElement(refs.reference.current) &&
-        refs.reference.current.contains(targetNode)
+        refs.domReference.current?.contains(targetNode)
       ) {
         return;
       }
@@ -93,19 +78,21 @@ export function safePolygon<RT extends ReferenceType = ReferenceType>({
       // If any nested child is open, abort.
       if (
         tree &&
-        getChildren(tree, nodeId).some(({context}) => context?.open)
+        getChildren(tree.nodesRef.current, nodeId).some(
+          ({context}) => context?.open
+        )
       ) {
         return;
       }
 
       // The cursor landed, so we destroy the polygon logic
-      if (refs.floating.current?.contains(targetNode)) {
+      if (refs.floating.current?.contains(targetNode) && !leave) {
         polygonIsDestroyed = true;
         return;
       }
 
       if (
-        !refs.reference.current ||
+        !refs.domReference.current ||
         !refs.floating.current ||
         placement == null ||
         x == null ||
@@ -114,7 +101,7 @@ export function safePolygon<RT extends ReferenceType = ReferenceType>({
         return;
       }
 
-      const refRect = refs.reference.current.getBoundingClientRect();
+      const refRect = refs.domReference.current.getBoundingClientRect();
       const rect = refs.floating.current.getBoundingClientRect();
       const side = placement.split('-')[0] as Side;
       const cursorLeaveFromRight = x > rect.right - rect.width / 2;
@@ -143,8 +130,8 @@ export function safePolygon<RT extends ReferenceType = ReferenceType>({
           if (
             clientX >= rect.left &&
             clientX <= rect.right &&
-            clientY >= rect.bottom &&
-            clientY <= refRect.top
+            clientY >= rect.top &&
+            clientY <= refRect.top + 1
           ) {
             return;
           }
@@ -153,16 +140,16 @@ export function safePolygon<RT extends ReferenceType = ReferenceType>({
           if (
             clientX >= rect.left &&
             clientX <= rect.right &&
-            clientY >= refRect.bottom &&
-            clientY <= rect.top
+            clientY >= refRect.bottom - 1 &&
+            clientY <= rect.bottom
           ) {
             return;
           }
           break;
         case 'left':
           if (
-            clientX >= rect.right &&
-            clientX <= refRect.left &&
+            clientX >= rect.left &&
+            clientX <= refRect.left + 1 &&
             clientY >= rect.top &&
             clientY <= rect.bottom
           ) {
@@ -171,8 +158,8 @@ export function safePolygon<RT extends ReferenceType = ReferenceType>({
           break;
         case 'right':
           if (
-            clientX >= refRect.right &&
-            clientX <= rect.left &&
+            clientX >= refRect.right - 1 &&
+            clientX <= rect.right &&
             clientY >= rect.top &&
             clientY <= rect.bottom
           ) {

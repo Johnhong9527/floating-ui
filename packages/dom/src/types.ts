@@ -1,22 +1,23 @@
 import type {
-  Middleware as CoreMiddleware,
-  SideObject,
+  AutoPlacementOptions,
   ClientRectObject,
-  Padding,
-  ElementRects,
-  Strategy,
-  RootBoundary,
-  Rect,
+  DetectOverflowOptions as CoreDetectOverflowOptions,
   Dimensions,
+  ElementRects,
+  FlipOptions,
+  HideOptions,
+  Middleware as CoreMiddleware,
   MiddlewareArguments as CoreMiddlewareArguments,
   MiddlewareReturn,
+  Padding,
+  Rect,
+  RootBoundary,
+  ShiftOptions,
+  SideObject,
+  SizeOptions as CoreSizeOptions,
+  Strategy,
+  ComputePositionConfig as CoreComputePositionConfig,
 } from '@floating-ui/core';
-import type {Options as CoreDetectOverflowOptions} from '@floating-ui/core/src/detectOverflow';
-import type {Options as AutoPlacementOptions} from '@floating-ui/core/src/middleware/autoPlacement';
-import type {Options as SizeOptions} from '@floating-ui/core/src/middleware/size';
-import type {Options as FlipOptions} from '@floating-ui/core/src/middleware/flip';
-import type {Options as ShiftOptions} from '@floating-ui/core/src/middleware/shift';
-import type {Options as HideOptions} from '@floating-ui/core/src/middleware/hide';
 
 type Promisable<T> = T | Promise<T>;
 
@@ -60,6 +61,27 @@ export type DetectOverflowOptions = Omit<
   'boundary'
 > & {
   boundary: Boundary;
+};
+
+export type SizeOptions = Omit<CoreSizeOptions, 'apply'> & {
+  /**
+   * Function that is called to perform style mutations to the floating element
+   * to change its size.
+   * @default undefined
+   */
+  apply(
+    args: MiddlewareArguments & {
+      availableWidth: number;
+      availableHeight: number;
+    }
+  ): void;
+};
+
+export type ComputePositionConfig = Omit<
+  CoreComputePositionConfig,
+  'middleware'
+> & {
+  middleware?: Middleware[];
 };
 
 /**
@@ -176,7 +198,6 @@ export type {
   RootBoundary,
   MiddlewareReturn,
   MiddlewareData,
-  ComputePositionConfig,
   ComputePositionReturn,
 } from '@floating-ui/core';
 

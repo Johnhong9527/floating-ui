@@ -13,14 +13,14 @@ export const SPONSORS = [
     image: '/sponsors/modern-treasury.jpg',
     url: 'https://www.moderntreasury.com/',
   },
-  {
-    title: 'D7mtg',
-    description:
-      'Helping brands express their vision with clarity by design',
-    image: '/sponsors/d7mtg.jpg',
-    url:
-      'https://d7m.tg?utm_source=floating-ui.com&utm_medium=paid_web&utm_campaign=may_2022',
-  },
+  // {
+  //   title: 'D7mtg',
+  //   description:
+  //     'Helping brands express their vision with clarity by design',
+  //   image: '/sponsors/d7mtg.jpg',
+  //   url:
+  //     'https://d7m.tg?utm_source=floating-ui.com&utm_medium=paid_web&utm_campaign=may_2022',
+  // },
 ];
 
 export const MINI_SPONSORS = [
@@ -70,5 +70,10 @@ export const MINI_SPONSORS = [
     logo: '/sponsors/titanam.svg',
     label: 'Titan Asset Management',
     url: 'https://titanam.co.uk/',
+  },
+  {
+    logo: '/sponsors/dailycontributors.svg',
+    label: 'Dailycontributors Blog',
+    url: 'https://dailycontributors.com',
   },
 ];

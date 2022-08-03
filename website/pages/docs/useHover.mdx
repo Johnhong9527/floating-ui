@@ -27,14 +27,8 @@ interface Props {
   mouseOnly?: boolean;
   delay?: number | Partial<{open: number, close: number}>;
   restMs?: number;
-  handleClose?:
-    | null
-    | ((
-        context: FloatingContext & {
-          onClose: () => void,
-          tree?: FloatingTreeType | null,
-        }
-      ) => (event: PointerEvent) => void);
+  move?: boolean;
+  handleClose?: null | HandleCloseFn;
 }
 ```
 
@@ -107,6 +101,20 @@ useHover(context, {
 });
 ```
 
+### move
+
+Whether moving the cursor over the floating element will open it,
+without a regular hover event required.
+
+For example, if it was resting over the reference element when it
+closed. Uses the `'mousemove'{:js}` event.
+
+```js
+useHover(context, {
+  move: false, // true by default
+});
+```
+
 ### handleClose
 
 default: `null{:js}`
@@ -152,7 +160,7 @@ This function takes options.
 
 ### restMs
 
-default: `0{:js}`
+default: `0{:js}` (off)
 
 Determines whether to close the floating once the cursor is at
 rest for the specified number of milliseconds mid-traversal. The
@@ -173,7 +181,7 @@ useHover(context, {
 
 ### buffer
 
-default: `0{:js}`
+default: `0.5{:js}`
 
 Determines the amount of buffer (in pixels) there is around the
 the polygon.
@@ -190,3 +198,35 @@ useHover(context, {
   }),
 });
 ```
+
+### Blocking pointer-events
+
+By default, the safe polygon blocks all CSS `pointer-events`
+behind the polygon, reference, and floating elements. This is so
+the user does not fire hover events over other elements
+unintentionally while they traverse the polygon.
+
+If your reference element is inside a scrollable container, this
+means it cannot be scrolled while the cursor rests over the
+reference element.
+
+There is a workaround for disabling this `pointer-events`
+behavior, but note, if there are items beneath the polygon with
+hover events that can open other floating elements, this results
+in poor UX.
+
+```js
+// Place this effect after `useInteractions()` in your component
+useLayoutEffect(() => {
+  if (open && refs.floating.current) {
+    const doc = refs.floating.current.ownerDocument ?? document;
+    doc.body.style.pointerEvents = '';
+  }
+}, [open]);
+```
+
+Another option is to add `pointer-events: auto{:sass}` to your
+scrolling container, then add an inner `<div>{:html}` inside the
+scrolling container that wraps all elements inside of it, and
+copies the `<body>{:html}` `pointer-events` style using a
+`MutationObserver{:.class}`.

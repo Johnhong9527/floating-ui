@@ -1,5 +1,6 @@
 import 'tailwindcss/tailwind.css';
-import '@reach/skip-nav/styles.css';
+import '@docsearch/css';
+import '../assets/reach-skip-nav.css';
 import '../assets/global.css';
 
 import Layout from '../lib/components/Layout';
